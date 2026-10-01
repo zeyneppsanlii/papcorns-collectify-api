@@ -91,6 +91,57 @@ done
 call POST /collections "$TOKEN_A" '{"name":"One too many"}'
 expect "21st collection" 422
 
+call POST "/collections/$ID/items" "$TOKEN_A" '{"title":"ab"}'
+expect "item title too short" 400
+
+call POST "/collections/$ID/items" "$TOKEN_A" '{"title":"Menemen","priority":"urgent"}'
+expect "item invalid priority" 400
+
+call POST "/collections/$ID/items" "$TOKEN_A" '{"title":"Menemen","url":"not-a-url"}'
+expect "item invalid url" 400
+
+call POST "/collections/$ID/items" "$TOKEN_B" '{"title":"Menemen"}'
+expect "create item in another user's collection" 404
+
+call POST "/collections/$ID/items" "$TOKEN_A" '{"title":"Menemen","tags":["breakfast"]}'
+expect "create item" 201
+ITEM_ID=$(echo "$BODY" | jq -r .id)
+[ "$(echo "$BODY" | jq -r .priority)" = "medium" ] && echo "PASS  item priority defaults to medium" || echo "FAIL  item priority default"
+
+call GET "/collections/$ID/items" "$TOKEN_B" ""
+expect "list items of another user's collection" 404
+
+call GET "/collections/$ID/items" "$TOKEN_A" ""
+expect "list items" 200
+[ "$(echo "$BODY" | jq length)" = "1" ] && echo "PASS  list contains one item" || echo "FAIL  item list size"
+
+call GET "/collections/$ID" "$TOKEN_A" ""
+[ "$(echo "$BODY" | jq '.items | length')" = "1" ] && echo "PASS  collection detail includes items" || echo "FAIL  collection detail items"
+
+call PUT "/collections/$ID/items/$ITEM_ID" "$TOKEN_A" '{}'
+expect "update item with empty body" 400
+
+call PUT "/collections/$ID/items/$ITEM_ID" "$TOKEN_B" '{"title":"Hacked"}'
+expect "update item of another user" 404
+
+call PUT "/collections/$ID/items/$ITEM_ID" "$TOKEN_A" '{"priority":"high"}'
+expect "update item" 200
+
+call PUT "/collections/$ID/items/missing" "$TOKEN_A" '{"priority":"low"}'
+expect "update missing item" 404
+
+call DELETE "/collections/$ID/items/$ITEM_ID" "$TOKEN_B" ""
+expect "delete item of another user" 404
+
+call DELETE "/collections/$ID/items/$ITEM_ID" "$TOKEN_A" ""
+expect "delete item" 204
+
+call DELETE "/collections/$ID/items/$ITEM_ID" "$TOKEN_A" ""
+expect "delete already deleted item" 404
+
+call POST "/collections/$ID/items" "$TOKEN_A" '{"title":"Cascade check"}'
+expect "create item for cascade check" 201
+
 call DELETE "/collections/$ID" "$TOKEN_A" ""
 expect "delete own collection" 204
 

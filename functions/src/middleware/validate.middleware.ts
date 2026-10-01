@@ -1,9 +1,10 @@
 import { RequestHandler } from "express";
+import { ParamsDictionary } from "express-serve-static-core";
 import { ZodType } from "zod";
 import { AppError } from "../errors/app-error";
 
 export const validateBody =
-  (schema: ZodType): RequestHandler =>
+  <P = ParamsDictionary>(schema: ZodType): RequestHandler<P> =>
   (req, _res, next) => {
     const result = schema.safeParse(req.body);
 

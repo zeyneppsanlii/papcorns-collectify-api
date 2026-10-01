@@ -73,19 +73,6 @@ export const collectionRepository = {
     return toCollectionResponse(snapshot.id, snapshot.data() as CollectionDocument);
   },
 
-  async findItems(id: string): Promise<Record<string, unknown>[]> {
-    const snapshot = await collections.doc(id).collection("items").orderBy("createdAt", "desc").get();
-    return snapshot.docs.map((doc) => {
-      const { createdAt, updatedAt, ...rest } = doc.data();
-      return {
-        id: doc.id,
-        ...rest,
-        createdAt: createdAt.toDate().toISOString(),
-        updatedAt: updatedAt.toDate().toISOString(),
-      };
-    });
-  },
-
   async update(
     userId: string,
     id: string,

@@ -1,3 +1,5 @@
+import { ItemResponse } from "./item";
+
 export interface CollectionDocument {
   userId: string;
   name: string;
@@ -16,5 +18,5 @@ export interface CollectionResponse {
 }
 
 export interface CollectionWithItems extends CollectionResponse {
-  items: Record<string, unknown>[];
+  items: ItemResponse[];
 }

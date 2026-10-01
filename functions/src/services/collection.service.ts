@@ -1,5 +1,6 @@
 import { AppError } from "../errors/app-error";
 import { collectionRepository } from "../repositories/collection.repository";
+import { itemRepository } from "../repositories/item.repository";
 import {
   CreateCollectionInput,
   UpdateCollectionInput,
@@ -22,7 +23,7 @@ export const collectionService = {
 
   async getWithItems(userId: string, id: string): Promise<CollectionWithItems> {
     const collection = await requireOwned(userId, id);
-    const items = await collectionRepository.findItems(id);
+    const items = await itemRepository.findAllByCollection(id);
     return { ...collection, items };
   },
 

@@ -1,7 +1,8 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { db } from "../config/firebase";
-import { CreateItemInput, UpdateItemInput } from "../schemas/item.schema";
-import { ItemDocument, ItemResponse } from "../types/item";
+import { CreateItemInput, ListItemsQuery, UpdateItemInput } from "../schemas/item.schema";
+import { AppError } from "../errors/app-error";
+import { ItemDocument, ItemPage, ItemResponse } from "../types/item";
 
 const itemsOf = (collectionId: string) =>
   db.collection("collections").doc(collectionId).collection("items");
@@ -38,6 +39,32 @@ export const itemRepository = {
   async findAllByCollection(collectionId: string): Promise<ItemResponse[]> {
     const snapshot = await itemsOf(collectionId).orderBy("createdAt", "desc").get();
     return snapshot.docs.map((doc) => toItemResponse(doc.id, doc.data() as ItemDocument));
+  },
+
+  async findPage(collectionId: string, query: ListItemsQuery): Promise<ItemPage> {
+    let ref: FirebaseFirestore.Query = itemsOf(collectionId);
+
+    if (query.priority) {
+      ref = ref.where("priority", "==", query.priority);
+    }
+    ref = ref.orderBy("createdAt", "desc");
+
+    if (query.cursor) {
+      const cursorSnapshot = await itemsOf(collectionId).doc(query.cursor).get();
+      if (!cursorSnapshot.exists) {
+        throw AppError.validation([{ path: ["cursor"], message: "Invalid cursor" }]);
+      }
+      ref = ref.startAfter(cursorSnapshot);
+    }
+
+    const snapshot = await ref.limit(query.limit + 1).get();
+    const hasMore = snapshot.size > query.limit;
+    const pageDocs = hasMore ? snapshot.docs.slice(0, query.limit) : snapshot.docs;
+
+    return {
+      items: pageDocs.map((doc) => toItemResponse(doc.id, doc.data() as ItemDocument)),
+      nextCursor: hasMore ? pageDocs[pageDocs.length - 1].id : null,
+    };
   },
 
   async update(

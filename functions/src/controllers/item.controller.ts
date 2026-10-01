@@ -15,8 +15,8 @@ export const createItem: RequestHandler<CollectionParams> = async (req, res) => 
 };
 
 export const listItems: RequestHandler<CollectionParams> = async (req, res) => {
-  const items = await itemService.list(req.userId, req.params.collectionId);
-  res.status(200).json(items);
+  const page = await itemService.list(req.userId, req.params.collectionId, res.locals.query);
+  res.status(200).json(page);
 };
 
 export const updateItem: RequestHandler<ItemParams> = async (req, res) => {

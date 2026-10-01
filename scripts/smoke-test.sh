@@ -113,7 +113,7 @@ expect "list items of another user's collection" 404
 
 call GET "/collections/$ID/items" "$TOKEN_A" ""
 expect "list items" 200
-[ "$(echo "$BODY" | jq length)" = "1" ] && echo "PASS  list contains one item" || echo "FAIL  item list size"
+[ "$(echo "$BODY" | jq '.items | length')" = "1" ] && echo "PASS  list contains one item" || echo "FAIL  item list size"
 
 call GET "/collections/$ID" "$TOKEN_A" ""
 [ "$(echo "$BODY" | jq '.items | length')" = "1" ] && echo "PASS  collection detail includes items" || echo "FAIL  collection detail items"
@@ -141,6 +141,32 @@ expect "delete already deleted item" 404
 
 call POST "/collections/$ID/items" "$TOKEN_A" '{"title":"Cascade check"}'
 expect "create item for cascade check" 201
+
+call POST "/collections/$ID/items" "$TOKEN_A" '{"title":"Second item"}'
+call POST "/collections/$ID/items" "$TOKEN_A" '{"title":"Third item","priority":"high"}'
+
+call GET "/collections/$ID/items?limit=2" "$TOKEN_A" ""
+expect "items first page" 200
+[ "$(echo "$BODY" | jq '.items | length')" = "2" ] && echo "PASS  first page has 2 items" || echo "FAIL  first page size"
+CURSOR=$(echo "$BODY" | jq -r .nextCursor)
+[ "$CURSOR" != "null" ] && echo "PASS  first page has nextCursor" || echo "FAIL  nextCursor missing"
+
+call GET "/collections/$ID/items?limit=2&cursor=$CURSOR" "$TOKEN_A" ""
+expect "items second page" 200
+[ "$(echo "$BODY" | jq '.items | length')" = "1" ] && [ "$(echo "$BODY" | jq -r .nextCursor)" = "null" ] && echo "PASS  last page ends cleanly" || echo "FAIL  last page"
+
+call GET "/collections/$ID/items?priority=high" "$TOKEN_A" ""
+expect "items filtered by priority" 200
+[ "$(echo "$BODY" | jq '.items | length')" = "1" ] && echo "PASS  priority filter returns 1 item" || echo "FAIL  priority filter"
+
+call GET "/collections/$ID/items?limit=0" "$TOKEN_A" ""
+expect "items invalid limit" 400
+
+call GET "/collections/$ID/items?cursor=missing" "$TOKEN_A" ""
+expect "items invalid cursor" 400
+
+call POST "/collections/$ID/items" "$TOKEN_A" '{bad json'
+expect "malformed JSON body" 400
 
 call DELETE "/collections/$ID" "$TOKEN_A" ""
 expect "delete own collection" 204

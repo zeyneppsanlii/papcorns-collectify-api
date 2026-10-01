@@ -30,3 +30,11 @@ export const updateItemSchema = z
 
 export type CreateItemInput = z.infer<typeof createItemSchema>;
 export type UpdateItemInput = z.infer<typeof updateItemSchema>;
+
+export const listItemsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  cursor: z.string().min(1).optional(),
+  priority: priority.optional(),
+});
+
+export type ListItemsQuery = z.infer<typeof listItemsQuerySchema>;

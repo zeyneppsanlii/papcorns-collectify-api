@@ -1,7 +1,7 @@
 import { AppError } from "../errors/app-error";
 import { collectionRepository } from "../repositories/collection.repository";
 import { itemRepository } from "../repositories/item.repository";
-import { CreateItemInput, UpdateItemInput } from "../schemas/item.schema";
+import { CreateItemInput, ListItemsQuery, UpdateItemInput } from "../schemas/item.schema";
 
 const requireOwnedCollection = async (userId: string, collectionId: string): Promise<void> => {
   const collection = await collectionRepository.findOwned(userId, collectionId);
@@ -16,9 +16,9 @@ export const itemService = {
     return itemRepository.create(userId, collectionId, input);
   },
 
-  async list(userId: string, collectionId: string) {
+  async list(userId: string, collectionId: string, query: ListItemsQuery) {
     await requireOwnedCollection(userId, collectionId);
-    return itemRepository.findAllByCollection(collectionId);
+    return itemRepository.findPage(collectionId, query);
   },
 
   async update(userId: string, collectionId: string, itemId: string, input: UpdateItemInput) {

@@ -15,3 +15,16 @@ export const validateBody =
     req.body = result.data;
     next();
   };
+
+export const validateQuery =
+  <P = ParamsDictionary>(schema: ZodType): RequestHandler<P> =>
+  (req, res, next) => {
+    const result = schema.safeParse(req.query);
+
+    if (!result.success) {
+      throw AppError.validation(result.error.issues);
+    }
+
+    res.locals.query = result.data;
+    next();
+  };

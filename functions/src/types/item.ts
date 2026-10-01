@@ -18,3 +18,8 @@ export interface ItemResponse extends Omit<ItemDocument, "createdAt" | "updatedA
   createdAt: string;
   updatedAt: string;
 }
+
+export interface ItemPage {
+  items: ItemResponse[];
+  nextCursor: string | null;
+}

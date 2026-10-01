@@ -20,6 +20,10 @@ export class AppError extends Error {
     return new AppError(409, "CONFLICT", message);
   }
 
+  static limitExceeded(message: string): AppError {
+    return new AppError(422, "LIMIT_EXCEEDED", message);
+  }
+
   static validation(details: unknown): AppError {
     return new AppError(400, "VALIDATION_ERROR", "Invalid request", details);
   }

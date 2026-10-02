@@ -193,10 +193,28 @@ npm test
 
 ## Deployment
 
-Not deployed. To deploy to the Firebase project in `.firebaserc`:
+The API is deployed on Firebase Cloud Functions (project `papcorns-collectify-api`, region `us-central1`):
+
+```
+https://us-central1-papcorns-collectify-api.cloudfunctions.net/api
+```
+
+```bash
+curl https://us-central1-papcorns-collectify-api.cloudfunctions.net/api/health
+```
+
+All other endpoints need a Firebase ID token. To obtain one for a user created in the Firebase console (Authentication, Email/Password), use the project's Web API key:
+
+```bash
+curl -s -X POST "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=<WEB_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"<EMAIL>","password":"<PASSWORD>","returnSecureToken":true}' | jq -r .idToken
+```
+
+To deploy your own copy, upgrade the Firebase project to the Blaze plan and run:
 
 ```bash
 firebase deploy --only functions,firestore
 ```
 
-Deploying Cloud Functions generally requires the Blaze plan on the Firebase project. The base URL then has the form `https://us-central1-<project-id>.cloudfunctions.net/api`.
+This also deploys `firestore.rules` and `firestore.indexes.json`. The Postman collection works against the deployed API by changing the `baseUrl` variable to the URL above.

@@ -113,8 +113,9 @@ Every error uses the same envelope:
 |---|---|---|
 | 400 | `VALIDATION_ERROR` | Invalid body or query (`details` holds the zod issues) |
 | 400 | `INVALID_JSON` | Malformed JSON body |
+| 413 | `PAYLOAD_TOO_LARGE` | Request body larger than 100 KB |
 | 401 | `UNAUTHORIZED` | Missing, malformed, invalid or expired token |
-| 404 | `NOT_FOUND` | Unknown resource, or a resource owned by another user |
+| 404 | `NOT_FOUND` | Unknown resource, a resource owned by another user, or an id that cannot exist in Firestore (for example `__x__`) |
 | 409 | `CONFLICT` | Duplicate collection name |
 | 422 | `LIMIT_EXCEEDED` | More than 20 collections for one user |
 | 429 | `TOO_MANY_REQUESTS` | Rate limit exceeded (300 requests per minute per IP) |
@@ -167,6 +168,15 @@ collections/{collectionId}
 - **Pagination is cursor-based** and only applied to the items list. The collection detail endpoint still returns all items of that collection, which could grow large. Collections are capped at 20 per user, so they are not paginated.
 - **Rate limiting is in memory.** Each function instance keeps its own counter, so the effective limit loosens when the function scales out. A shared store such as Redis would fix this and was considered out of scope.
 - **Priority filter needs a composite index** (`priority` + `createdAt`), declared in `firestore.indexes.json`.
+
+## Known limitations
+
+- **Unbounded items per collection.** There is no cap on the number of items in a collection, and `GET /collections/:id` returns all of them. Use the paginated items endpoint for large collections.
+- **Optional fields cannot be cleared.** `PUT` can change `url` and `imageUrl` but not remove them, because `null` is not accepted.
+- **Revoked tokens stay valid until they expire.** Tokens are verified without a revocation check, so a disabled or signed-out user can still call the API for up to an hour. Checking revocation costs an extra Auth lookup per request.
+- **Collection deletion is two steps.** The collection document is deleted in a transaction first, then its items are removed. This guarantees no item can be added to a collection being deleted, but a server crash between the two steps would leave unreachable item documents behind.
+- **Case-insensitive names use `toLowerCase()`.** Locale-specific letters such as the Turkish dotted capital I are not specially normalized.
+- **Rate limiting is per function instance** (see the design decisions above).
 
 ## Tests
 

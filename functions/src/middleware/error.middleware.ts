@@ -6,8 +6,13 @@ export const notFoundHandler: RequestHandler = (_req, _res, next) => {
   next(AppError.notFound("Route not found"));
 };
 
-const isMalformedJson = (err: unknown): boolean =>
-  typeof err === "object" && err !== null && (err as { type?: string }).type === "entity.parse.failed";
+interface MalformedJsonError {
+  type: "entity.parse.failed";
+  status?: number;
+}
+
+const isMalformedJson = (err: unknown): err is MalformedJsonError =>
+  typeof err === "object" && err !== null && "type" in err && err.type === "entity.parse.failed";
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (isMalformedJson(err)) {

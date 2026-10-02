@@ -2,13 +2,47 @@ import { AppError } from "../errors/app-error";
 import { collectionRepository } from "../repositories/collection.repository";
 import { itemRepository } from "../repositories/item.repository";
 import {
-  CreateCollectionInput,
-  UpdateCollectionInput,
-} from "../schemas/collection.schema";
-import { CollectionResponse, CollectionWithItems } from "../types/collection";
+  CollectionGuard,
+  CollectionRefCommand,
+  CollectionResponse,
+  CollectionWithItems,
+  CreateCollectionCommand,
+  ListCollectionsCommand,
+  UpdateCollectionCommand,
+} from "../types/collection";
 
-const requireOwned = async (userId: string, id: string): Promise<CollectionResponse> => {
-  const collection = await collectionRepository.findOwned(userId, id);
+const MAX_COLLECTIONS_PER_USER = 20;
+
+const normalizeName = (name: string): string => name.trim().toLowerCase();
+
+const isNameTaken = (existing: CollectionResponse[], name: string, excludeId?: string): boolean => {
+  const target = normalizeName(name);
+  return existing.some((c) => c.id !== excludeId && normalizeName(c.name) === target);
+};
+
+const creationRules =
+  (name: string): CollectionGuard =>
+  (existing) => {
+    if (existing.length >= MAX_COLLECTIONS_PER_USER) {
+      throw AppError.limitExceeded(
+        `Maximum of ${MAX_COLLECTIONS_PER_USER} collections per user reached`
+      );
+    }
+    if (isNameTaken(existing, name)) {
+      throw AppError.conflict("A collection with this name already exists");
+    }
+  };
+
+const renameRules =
+  (id: string, name: string | undefined): CollectionGuard =>
+  (existing) => {
+    if (name !== undefined && isNameTaken(existing, name, id)) {
+      throw AppError.conflict("A collection with this name already exists");
+    }
+  };
+
+const requireOwned = async (command: CollectionRefCommand): Promise<CollectionResponse> => {
+  const collection = await collectionRepository.findOwned(command);
   if (!collection) {
     throw AppError.notFound("Collection not found");
   }
@@ -16,27 +50,32 @@ const requireOwned = async (userId: string, id: string): Promise<CollectionRespo
 };
 
 export const collectionService = {
-  create: (userId: string, input: CreateCollectionInput) =>
-    collectionRepository.create(userId, input),
+  create: ({ userId, input }: CreateCollectionCommand) =>
+    collectionRepository.createGuarded({ userId, input, guard: creationRules(input.name) }),
 
-  list: (userId: string) => collectionRepository.findAllByUser(userId),
+  list: ({ userId }: ListCollectionsCommand) => collectionRepository.findAllByUser(userId),
 
-  async getWithItems(userId: string, id: string): Promise<CollectionWithItems> {
-    const collection = await requireOwned(userId, id);
-    const items = await itemRepository.findAllByCollection(id);
+  async getWithItems(command: CollectionRefCommand): Promise<CollectionWithItems> {
+    const collection = await requireOwned(command);
+    const items = await itemRepository.findAllByCollection(command.id);
     return { ...collection, items };
   },
 
-  async update(userId: string, id: string, input: UpdateCollectionInput) {
-    const updated = await collectionRepository.update(userId, id, input);
+  async update({ userId, id, input }: UpdateCollectionCommand): Promise<CollectionResponse> {
+    const updated = await collectionRepository.updateGuarded({
+      userId,
+      id,
+      input,
+      guard: renameRules(id, input.name),
+    });
     if (!updated) {
       throw AppError.notFound("Collection not found");
     }
     return updated;
   },
 
-  async remove(userId: string, id: string): Promise<void> {
-    await requireOwned(userId, id);
-    await collectionRepository.deleteWithItems(id);
+  async remove(command: CollectionRefCommand): Promise<void> {
+    await requireOwned(command);
+    await collectionRepository.deleteWithItems(command.id);
   },
 };

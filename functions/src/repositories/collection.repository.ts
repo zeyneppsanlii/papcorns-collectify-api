@@ -1,48 +1,35 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { db } from "../config/firebase";
-import { AppError } from "../errors/app-error";
-import { CollectionDocument, CollectionResponse } from "../types/collection";
 import {
-  CreateCollectionInput,
-  UpdateCollectionInput,
-} from "../schemas/collection.schema";
-
-const MAX_COLLECTIONS_PER_USER = 20;
+  CollectionDocument,
+  CollectionRefCommand,
+  CollectionResponse,
+  GuardedCreateCollectionCommand,
+  GuardedUpdateCollectionCommand,
+} from "../types/collection";
 
 const collections = db.collection("collections");
 
-const normalize = (name: string): string => name.trim().toLowerCase();
+const toCollectionResponse = (id: string, data: CollectionDocument): CollectionResponse => ({
+  id,
+  userId: data.userId,
+  name: data.name,
+  description: data.description,
+  createdAt: data.createdAt.toDate().toISOString(),
+  updatedAt: data.updatedAt.toDate().toISOString(),
+});
 
-const toCollectionResponse = (id: string, data: CollectionDocument): CollectionResponse => {
-  return {
-    id,
-    userId: data.userId,
-    name: data.name,
-    description: data.description,
-    createdAt: data.createdAt.toDate().toISOString(),
-    updatedAt: data.updatedAt.toDate().toISOString(),
-  };
-};
+const toResponses = (snapshot: FirebaseFirestore.QuerySnapshot): CollectionResponse[] =>
+  snapshot.docs.map((doc) => toCollectionResponse(doc.id, doc.data() as CollectionDocument));
 
 const userCollectionsQuery = (userId: string) => collections.where("userId", "==", userId);
 
 export const collectionRepository = {
-  async create(userId: string, input: CreateCollectionInput): Promise<CollectionResponse> {
+  async createGuarded({ userId, input, guard }: GuardedCreateCollectionCommand) {
     const ref = collections.doc();
 
     return db.runTransaction(async (tx) => {
-      const existing = await tx.get(userCollectionsQuery(userId));
-
-      if (existing.size >= MAX_COLLECTIONS_PER_USER) {
-        throw AppError.limitExceeded(
-          `Maximum of ${MAX_COLLECTIONS_PER_USER} collections per user reached`
-        );
-      }
-
-      const target = normalize(input.name);
-      if (existing.docs.some((doc) => normalize(doc.data().name) === target)) {
-        throw AppError.conflict("A collection with this name already exists");
-      }
+      guard(toResponses(await tx.get(userCollectionsQuery(userId))));
 
       const now = Timestamp.now();
       const document: CollectionDocument = {
@@ -59,13 +46,11 @@ export const collectionRepository = {
   },
 
   async findAllByUser(userId: string): Promise<CollectionResponse[]> {
-    const snapshot = await userCollectionsQuery(userId).get();
-    return snapshot.docs
-      .map((doc) => toCollectionResponse(doc.id, doc.data() as CollectionDocument))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const responses = toResponses(await userCollectionsQuery(userId).get());
+    return responses.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
 
-  async findOwned(userId: string, id: string): Promise<CollectionResponse | null> {
+  async findOwned({ userId, id }: CollectionRefCommand): Promise<CollectionResponse | null> {
     const snapshot = await collections.doc(id).get();
     if (!snapshot.exists || snapshot.data()?.userId !== userId) {
       return null;
@@ -73,11 +58,12 @@ export const collectionRepository = {
     return toCollectionResponse(snapshot.id, snapshot.data() as CollectionDocument);
   },
 
-  async update(
-    userId: string,
-    id: string,
-    input: UpdateCollectionInput
-  ): Promise<CollectionResponse | null> {
+  async updateGuarded({
+    userId,
+    id,
+    input,
+    guard,
+  }: GuardedUpdateCollectionCommand): Promise<CollectionResponse | null> {
     const ref = collections.doc(id);
 
     return db.runTransaction(async (tx) => {
@@ -90,23 +76,14 @@ export const collectionRepository = {
         return null;
       }
 
-      if (input.name !== undefined) {
-        const target = normalize(input.name);
-        const duplicate = all.docs.some(
-          (doc) => doc.id !== id && normalize(doc.data().name) === target
-        );
-        if (duplicate) {
-          throw AppError.conflict("A collection with this name already exists");
-        }
-      }
+      guard(toResponses(all));
 
       const changes: Partial<CollectionDocument> = { updatedAt: Timestamp.now() };
       if (input.name !== undefined) changes.name = input.name;
       if (input.description !== undefined) changes.description = input.description;
       tx.update(ref, changes);
 
-      const merged = { ...(current.data() as CollectionDocument), ...changes };
-      return toCollectionResponse(id, merged);
+      return toCollectionResponse(id, { ...(current.data() as CollectionDocument), ...changes });
     });
   },
 

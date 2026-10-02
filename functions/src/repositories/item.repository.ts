@@ -24,18 +24,31 @@ const toItemResponse = (id: string, data: ItemDocument): ItemResponse => ({
 });
 
 export const itemRepository = {
-  async create({ userId, collectionId, input }: PersistCreateItem): Promise<ItemResponse> {
+  async createInOwnedCollection({
+    userId,
+    collectionId,
+    input,
+  }: PersistCreateItem): Promise<ItemResponse | null> {
+    const collectionRef = db.collection("collections").doc(collectionId);
     const ref = itemsOf(collectionId).doc();
-    const now = Timestamp.now();
-    const document: ItemDocument = withoutUndefined({
-      collectionId,
-      userId,
-      ...input,
-      createdAt: now,
-      updatedAt: now,
+
+    return db.runTransaction(async (tx) => {
+      const collection = await tx.get(collectionRef);
+      if (!collection.exists || collection.data()?.userId !== userId) {
+        return null;
+      }
+
+      const now = Timestamp.now();
+      const document: ItemDocument = withoutUndefined({
+        collectionId,
+        userId,
+        ...input,
+        createdAt: now,
+        updatedAt: now,
+      });
+      tx.create(ref, document);
+      return toItemResponse(ref.id, document);
     });
-    await ref.create(document);
-    return toItemResponse(ref.id, document);
   },
 
   async findAllByCollection(collectionId: string): Promise<ItemResponse[]> {

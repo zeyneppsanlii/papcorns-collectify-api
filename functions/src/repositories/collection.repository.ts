@@ -87,7 +87,21 @@ export const collectionRepository = {
     });
   },
 
-  async deleteWithItems(id: string): Promise<void> {
-    await db.recursiveDelete(collections.doc(id));
+  async deleteOwnedWithItems({ userId, id }: CollectionRefCommand): Promise<boolean> {
+    const ref = collections.doc(id);
+
+    const deleted = await db.runTransaction(async (tx) => {
+      const current = await tx.get(ref);
+      if (!current.exists || current.data()?.userId !== userId) {
+        return false;
+      }
+      tx.delete(ref);
+      return true;
+    });
+
+    if (deleted) {
+      await db.recursiveDelete(ref);
+    }
+    return deleted;
   },
 };

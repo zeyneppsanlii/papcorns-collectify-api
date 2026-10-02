@@ -5,7 +5,7 @@ import {
   listItems,
   updateItem,
 } from "../controllers/item.controller";
-import { validateBody, validateQuery } from "../middleware/validate.middleware";
+import { validateBody, validateDocumentId, validateQuery } from "../middleware/validate.middleware";
 import {
   createItemSchema,
   listItemsQuerySchema,
@@ -13,6 +13,8 @@ import {
 } from "../schemas/item.schema";
 
 export const itemsRouter = Router({ mergeParams: true });
+
+itemsRouter.param("itemId", validateDocumentId);
 
 itemsRouter.post("/", validateBody(createItemSchema), createItem);
 itemsRouter.get("/", validateQuery(listItemsQuerySchema), listItems);

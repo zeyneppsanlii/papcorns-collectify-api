@@ -55,4 +55,27 @@ describe("health and authentication", () => {
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("INVALID_JSON");
   });
+
+  it("returns 413 for oversized bodies", async () => {
+    const user = await createUser();
+
+    const response = await api()
+      .post("/collections")
+      .set(user.auth)
+      .send({ name: "Huge", description: "a".repeat(200_000) });
+
+    expect(response.status).toBe(413);
+    expect(response.body.error.code).toBe("PAYLOAD_TOO_LARGE");
+  });
+
+  it.each(["/collections/__reserved__", "/collections/valid/items/__reserved__", "/collections/__reserved__/items"])(
+    "returns 404 instead of 500 for reserved ids on %s",
+    async (path) => {
+      const user = await createUser();
+
+      const response = await api().get(path).set(user.auth);
+
+      expect(response.status).toBe(404);
+    }
+  );
 });

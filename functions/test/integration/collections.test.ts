@@ -1,3 +1,4 @@
+import { db } from "../../src/config/firebase";
 import { api, createCollection, createUser, TestUser } from "./helpers";
 
 describe("collections", () => {
@@ -126,5 +127,20 @@ describe("collections", () => {
     const created = responses.filter((r) => r.status === 201);
     expect(created).toHaveLength(1);
     expect(responses.filter((r) => r.status === 409)).toHaveLength(4);
+  });
+
+  it("leaves no orphan items when items are created while the collection is deleted", async () => {
+    const { id } = await createCollection(owner);
+
+    const responses = await Promise.all([
+      api().delete(`/collections/${id}`).set(owner.auth),
+      ...Array.from({ length: 8 }, (_, i) =>
+        api().post(`/collections/${id}/items`).set(owner.auth).send({ title: `Racing item ${i}` })
+      ),
+    ]);
+
+    expect(responses[0].status).toBe(204);
+    const orphans = await db.collection("collections").doc(id).collection("items").get();
+    expect(orphans.empty).toBe(true);
   });
 });

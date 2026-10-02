@@ -6,13 +6,15 @@ import {
   listCollections,
   updateCollection,
 } from "../controllers/collection.controller";
-import { validateBody } from "../middleware/validate.middleware";
+import { validateBody, validateDocumentId } from "../middleware/validate.middleware";
 import {
   createCollectionSchema,
   updateCollectionSchema,
 } from "../schemas/collection.schema";
 
 export const collectionsRouter = Router();
+
+collectionsRouter.param("id", validateDocumentId);
 
 collectionsRouter.post("/", validateBody(createCollectionSchema), createCollection);
 collectionsRouter.get("/", listCollections);

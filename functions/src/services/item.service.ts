@@ -22,8 +22,11 @@ const requireOwnedCollection = async ({
 
 export const itemService = {
   async create({ userId, collectionId, input }: CreateItemCommand): Promise<ItemResponse> {
-    await requireOwnedCollection({ userId, collectionId });
-    return itemRepository.create({ userId, collectionId, input });
+    const created = await itemRepository.createInOwnedCollection({ userId, collectionId, input });
+    if (!created) {
+      throw AppError.notFound("Collection not found");
+    }
+    return created;
   },
 
   async list({ userId, collectionId, query }: ListItemsCommand) {

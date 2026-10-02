@@ -75,7 +75,9 @@ export const collectionService = {
   },
 
   async remove(command: CollectionRefCommand): Promise<void> {
-    await requireOwned(command);
-    await collectionRepository.deleteWithItems(command.id);
+    const deleted = await collectionRepository.deleteOwnedWithItems(command);
+    if (!deleted) {
+      throw AppError.notFound("Collection not found");
+    }
   },
 };

@@ -1,0 +1,302 @@
+{
+  "info": {
+    "name": "Collectify API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:5001/papcorns-collectify-api/us-central1/api"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "collectionId",
+      "value": ""
+    },
+    {
+      "key": "itemId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      }
+    },
+    {
+      "name": "Create collection",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/collections",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "collections"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Favorite Recipes\",\n  \"description\": \"Things to cook\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set(\"collectionId\", body.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List collections",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/collections",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "collections"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get collection",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "collections",
+            "{{collectionId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update collection",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "collections",
+            "{{collectionId}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Tarifler\",\n  \"description\": \"Updated\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Create item",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}/items",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "collections",
+            "{{collectionId}}",
+            "items"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Menemen\",\n  \"content\": \"With peppers\",\n  \"tags\": [\n    \"breakfast\"\n  ],\n  \"priority\": \"high\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const body = pm.response.json();",
+              "pm.collectionVariables.set(\"itemId\", body.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List items",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}/items?limit=10",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "collections",
+            "{{collectionId}}",
+            "items"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": "10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "List items by priority",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}/items?priority=high",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "collections",
+            "{{collectionId}}",
+            "items"
+          ],
+          "query": [
+            {
+              "key": "priority",
+              "value": "high"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update item",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}/items/{{itemId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "collections",
+            "{{collectionId}}",
+            "items",
+            "{{itemId}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"priority\": \"low\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Delete item",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}/items/{{itemId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "collections",
+            "{{collectionId}}",
+            "items",
+            "{{itemId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Delete collection",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/collections/{{collectionId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "collections",
+            "{{collectionId}}"
+          ]
+        }
+      }
+    }
+  ]
+}
